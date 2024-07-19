@@ -1,0 +1,422 @@
+#!/usr/bin/env python3
+#
+# vo - visual organizer, using tkinter from Python
+#
+
+import sys
+import os
+import io
+import tkinter as tk
+from functools import partial
+from tkinter.scrolledtext import ScrolledText
+from tkinter.messagebox import askquestion, showwarning, showinfo, askyesnocancel
+import tkinter.font as fnt
+from tkinter import Text, Entry
+
+try:
+    import sv_ttk
+except:
+    pass
+
+def detect_fractional_scaling():
+    from subprocess import check_output, STDOUT
+    try:
+        output = check_output(
+            ["gsettings", "get", "org.gnome.mutter", "experimental-features"],
+            stderr=STDOUT
+        ).decode().strip()
+        if any(key in output for key in ['scale-monitor-framebuffer', 'fractional-scaling']):
+            return True
+    except subprocess.CalledProcessError as e:
+        pass
+    return False
+
+def detect_x11():
+    try:
+        if os.environ["XDG_SESSION_TYPE"] == "x11":
+            return True
+    except:
+        return False
+    
+if detect_fractional_scaling():
+    if detect_x11():
+        FRACFACTOR = 2
+    else:
+        FRACFACTOR = 1
+else:
+    FRACFACTOR = 1
+
+# https://sashamaps.net/docs/resources/20-colors/
+PALETTE = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4',
+           '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff',
+           '#9A6324',
+           # '#fffac8',
+           '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9',
+           #'#ffffff',
+           '#000000']
+SCALELEVEL = 6*FRACFACTOR
+SCALES = [0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00, 1.15, 1.30, 1.45,
+          1.60, 1.80, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50, 3.75, 4.00]
+SCALE = SCALES[SCALELEVEL]
+FONTFAMILY = 'Liberation Mono' #FONTFAMILY = 'Nimbus Mono PS'
+FONTFAMILY = 'Liberation Sans'
+FONTPOINTS = 10//FRACFACTOR
+
+# Control buttons functionality
+LastSavedState = None
+boxes = []
+filename = "VizOrg.vo"
+
+def on_close_button_click(root):
+    global boxes, LastSavedState, filename
+    contents = serialize(boxes)
+    if contents != LastSavedState:
+        savefirst = askyesnocancel(message="There are unsaved changes. Do you wish to save them before exiting?")
+    else:
+        savefirst = False
+    if savefirst:
+        with open(filename,"w") as writefile:
+            print(contents, end='', file=writefile)            
+        LastSavedState = contents
+        answer = showinfo(message="Boxes have been saved to "+filename)
+    elif savefirst == None:
+        return    
+    root.destroy()
+
+def serialize(boxes):
+    #create the data first
+    stream = io.StringIO()
+    for id, box in enumerate(boxes):
+        try:
+            text = box.text.get("1.0",tk.END)
+        except:
+            text = ""
+        print("Box", file=stream)
+        print("    id:", id, file=stream)
+        print("    title: \"" + box.title.get().strip() + '"', file=stream)
+        print("    x:", int(box.winfo_x()/SCALE), file=stream)
+        print("    y:", int(box.winfo_y()/SCALE), file=stream)
+        print("    width:", int(box.width), file=stream)
+        print("    height:", int(box.height), file=stream)
+        print("    background:", '"'+box["background"]+'"', file=stream)
+        if text.strip() == "":
+            print("    text[0]:", file=stream)
+        else:
+            print("    text["+str(len(text.splitlines()))+"]:", file=stream)
+            print(text[:-1], file=stream)
+        print("EndBox", file=stream)
+    contents = stream.getvalue()
+    return contents
+
+def deserialize(contents, boxes, root):
+    global LastSavedState
+    lines = contents.splitlines()    
+    i = 0
+    while i < len(lines):
+        rawline = lines[i]
+        line = rawline.strip()
+        i += 1
+        if line == "Box":
+            thisbox = {"x": 0, "y": 0, "background": "white", "title": "Box"+str(i), "text": "", "width": 200, "height": 200}
+        elif line[:2] == "x:":
+            thisbox["x"] = int(float(line[2:]))
+        elif line[:2] == "y:":
+            thisbox["y"] = int(float(line[2:]))
+        elif line[:13] == 'background: "':
+            thisbox["background"] = line[13:-1]
+        elif line[:8] == 'title: "':
+            thisbox["title"] = line[8:-1]
+        elif line[:7] == 'width: ':
+            thisbox["width"] = int(float(line[7:]))
+        elif line[:8] == 'height: ':
+            thisbox["height"] = int(float(line[8:]))
+        elif line[:5] == 'text[':
+            nlines = int(line[5:line.index(']')])
+            thisbox["text"] = '\n'.join(lines[i:i+nlines])
+            i += nlines
+        elif line == "EndBox":
+            boxes.append(Box(root,
+                             thisbox["title"],
+                             thisbox["x"],
+                             thisbox["y"],
+                             thisbox["background"],
+                             thisbox["text"],
+                             thisbox["width"],
+                             thisbox["height"]))
+            root.update()
+        elif line[:4] == "id: ":
+            pass
+        else:
+            print("WARNING: Unused option '"+line+"'")
+    LastSavedState = contents
+    
+def rebuild(root, rescale=0):
+    global boxes, SCALE, SCALELEVEL, SCALES, LastUp
+    newscalelevel = SCALELEVEL + rescale
+    if newscalelevel < 0: newscalelevel = 0
+    if newscalelevel >= len(SCALES): newscalelevel = len(SCALES)-1
+    newscale = SCALES[newscalelevel]
+    if rescale == 0 or newscale != SCALE:
+        scalefactor = newscale/SCALE
+        state = serialize(boxes)
+        n = len(boxes)
+        LastUpI = None
+        # increase the size of the window
+        geo = root.winfo_geometry()
+        dimensions, x_y = geo.split('+', 1)
+        width, height = dimensions.split('x')
+        x, y = x_y.split('+')
+        width = int(width)
+        height = int(height)
+        newgeo = str(int(width*scalefactor))+"x"+str(int(height*scalefactor))
+        root.geometry(newgeo)
+        root.update()
+        for i in reversed(range(n)):
+            if LastUp == boxes[i]:
+                LastUpI = i
+            boxes[i].destroy()
+            del boxes[i];
+        SCALELEVEL = newscalelevel
+        SCALE = newscale
+        deserialize(state, boxes, root)
+        if LastUpI:
+            LastUp = boxes[LastUpI]
+
+def on_save_button_click(obj):
+    global boxes, filename, LastSavedState
+    contents = serialize(boxes)
+    with open(filename,"w") as writefile:
+        print(contents, end='', file=writefile)
+    LastSavedState = contents
+    answer = showinfo(message="Boxes have been saved to "+filename)
+
+def on_add_button_click(root):
+    global boxes, LastUp
+    locx = int(100*SCALE)
+    locy = int(100*SCALE)
+    col = PALETTE[0]
+    if LastUp:
+        col = LastUp["background"]
+        locx = LastUp.winfo_x() + 20*SCALE
+        locy = LastUp.winfo_y() + 20*SCALE
+    newbox = Box(root, "Box"+str(len(boxes)), int(locx/SCALE), int(locy/SCALE), col, "")
+    boxes.append(newbox)
+    LastUp = newbox
+    newbox.text.focus_set()
+    
+# Support dragging of boxes
+X=0
+Y=0
+InAMove = False;
+MoveStartX = 0
+MoveStartY = 0
+LastUp = None
+def on_mouse_down(obj, event):
+    global InAMove, X, Y, MoveStartX, MoveStartY
+    X, Y = obj.winfo_x(), obj.winfo_y()
+    InAMove = True
+    MoveStartX, MoveStartY = event.x, event.y
+
+def on_mouse_up(obj, event):
+    global InAMove, X, Y, MoveStartX, MoveStartY, LastUp
+    InAMove = False
+    LastUp = obj
+    obj.winfo_toplevel().focus_set()
+    
+def on_mouse_motion(obj, event):
+    global InAMove, X, Y, MoveStartX, MoveStartY
+    if InAMove:
+        if (event.x - MoveStartX != 0) or (event.y - MoveStartY != 0):
+            X = X + event.x - MoveStartX
+            Y = Y + event.y - MoveStartY
+            obj.place(x=X, y=Y)
+
+def on_right_mouse_down(obj, event):
+    # find object color
+    colornamenow = obj["background"]
+    colorindexnow = -1
+    for i,c in enumerate(PALETTE):
+        if c == colornamenow:
+            colorindexnow = i
+    newcolorindex =(colorindexnow+1)%len(PALETTE)
+    obj["background"] = PALETTE[newcolorindex]
+    obj.title.config(background=PALETTE[newcolorindex])
+
+def on_x_click(obj):
+    global boxes, LastUp
+    i = boxes.index(obj)
+    if obj == LastUp:
+        if i > 0:
+            LastUp = boxes[i-1]
+        else:
+            LastUp = None
+    obj.destroy()
+    del boxes[i];
+
+def on_width_click(obj,amount,event):
+    global boxes
+    oldwidth = obj.width
+    thisbox = {"x":      int(obj.winfo_x()/SCALE),
+               "y":      int(obj.winfo_y()/SCALE),
+               "background": obj["background"],
+               "title":      obj.title.get().strip(),
+               "text":       obj.text.get("1.0",tk.END).strip(),
+               "width":      obj.width,
+               "height":     obj.height}
+    parent = obj.master
+    i = boxes.index(obj)
+    obj.destroy()
+    boxes[i] = Box(parent, thisbox["title"], thisbox["x"], thisbox["y"], thisbox["background"],
+                   thisbox["text"], thisbox["width"] + 20*amount, thisbox["height"])
+
+# Box template
+class Box(tk.Frame):
+    def __init__(self,parent,title,xloc,yloc,background,text="",width=200,height=200):
+        tk.Frame.__init__(self, parent, width=int(width*SCALE), height=int(height*SCALE),
+                          bg=background,
+                          highlightbackground='white',
+                          highlightthickness=int(3*SCALE))
+        self.config(takefocus=False)
+        self.pack_propagate(False)
+        self.place(x=SCALE*xloc, y=SCALE*yloc)
+        self.bind('<Motion>', partial(on_mouse_motion, self))
+        self.bind("<Button-1>", partial(on_mouse_down, self))
+        self.bind("<ButtonRelease-1>", partial(on_mouse_up, self))
+        self.bind("<Button-3>", partial(on_right_mouse_down, self))
+        linewidth = width//8 - 2
+        self.title = Entry(self, width = linewidth,  font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)))
+        self.title.place(relx=.5,rely=0,anchor='n')
+        self.title.config(background=background)
+        self.title.insert(0,title)
+        self.title.config(takefocus=False)
+        textwidth = linewidth - 1
+        textheight = height//16-3
+        self.text = ScrolledText(self, height = textheight, width = textwidth, wrap = tk.WORD, font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)))
+        self.text.place(relx=.5,rely=.5,anchor='c')
+        self.text.insert(tk.END,text)
+        self.text.vbar.config(takefocus=False)
+        self.close_button = tk.Button(self,
+                                      text="x",font = fnt.Font(family=FONTFAMILY, size = int(FONTPOINTS*SCALE)),
+                                      width=1,height=1,padx=0,pady=0,
+                                      command=partial(on_x_click,self))
+        self.close_button.place(relx=0.0, rely=0.0)
+        self.close_button.config(takefocus=False)
+        self.width = width
+        self.height = height
+        self.orig_xloc = xloc
+        self.orig_yloc = yloc
+        self.width_button = tk.Button(self, text="<>",
+                                      font = fnt.Font(family=FONTFAMILY, size = int(FONTPOINTS*SCALE)),
+                                      width=2,height=1,padx=0,pady=0,
+                                      command=partial(on_width_click,self,-1,None))
+        self.width_button.bind("<Button-3>", partial(on_width_click,self,+1))
+        self.width_button.place(x=(width-22)*SCALE-2, rely=0.0)
+        self.width_button.config(takefocus=False)
+
+def defocus(root, event):
+    global LastUp
+    if type(root.focus_get()) == tk.scrolledtext.ScrolledText:
+        LastUp = root.focus_get().master.master
+    root.focus_set()
+
+def on_arrow_key(root, dx, dy, event):
+    global LastUp, boxes
+    if not LastUp and root.focus_get() in boxes:
+        LastUp = root.focus_get()
+    try:
+        if not LastUp and root.focus_get().master.master in boxes:
+            LastUp = root.focus_get().master.master
+    except:
+        pass
+    if LastUp and type(root.focus_get()) != tk.scrolledtext.ScrolledText:
+        nowx, nowy= LastUp.winfo_x(), LastUp.winfo_y()
+        LastUp.place(x=nowx+int(dx*SCALE),y=nowy+int(dy*SCALE))
+
+def main():
+    global boxes,filename
+    # Command line arguments
+    # Need --help and other options to be available.
+    if len(sys.argv) >= 2:
+        filename = sys.argv[1]
+    else:
+        filename = "VizOrg.vo"
+    # Create the main window
+    winx = int(800*SCALE)
+    winy = int(350*SCALE)
+    root = tk.Tk()
+    root.title("VizOrg "+filename)
+    root.resizable(True, True)
+    root.geometry(str(winx)+"x"+str(winy)) 
+    root.protocol("WM_DELETE_WINDOW", partial(on_close_button_click,root))
+    root.configure(bg="#888")
+    root.bind("<Double-Button-1>", partial(defocus,root))
+    root.bind("<Escape>", partial(defocus,root))
+    root.bind("<Left>", partial(on_arrow_key,root,-1,0))
+    root.bind("<Right>", partial(on_arrow_key,root,+1,0))
+    root.bind("<Up>", partial(on_arrow_key,root,0,-1))
+    root.bind("<Down>", partial(on_arrow_key,root,0,+1))
+    root.bind("<Shift-Left>", partial(on_arrow_key,root,-15,0))
+    root.bind("<Shift-Right>", partial(on_arrow_key,root,+15,0))
+    root.bind("<Shift-Up>", partial(on_arrow_key,root,0,-15))
+    root.bind("<Shift-Down>", partial(on_arrow_key,root,0,+15))
+    root.bind("<Control-s>", on_save_button_click) 
+    root.bind("<Control-equal>",lambda event: rebuild(root,+1))
+    root.bind("<Control-minus>",lambda event: rebuild(root,-1))
+    root.bind("<Control-0>",lambda event: rebuild(root,6*FRACFACTOR-SCALELEVEL))
+    # Control buttons
+    buttons = tk.Frame(root)
+    save_button = tk.Button(buttons,
+                            text="Save",
+                            font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)),
+                            command=partial(on_save_button_click,root))
+    add_button = tk.Button(buttons,
+                           text="&",
+                           font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)),
+                           command=partial(on_add_button_click,root))
+    zoom_in_button = tk.Button(buttons,
+                           text="-",
+                           font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)),
+                           command=partial(rebuild,root,-1))
+    zoom_out_button = tk.Button(buttons,
+                           text="+",
+                           font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)),
+                           command=partial(rebuild,root,1))
+    save_button.pack(side=tk.LEFT)
+    add_button.pack(side=tk.LEFT)
+    zoom_in_button.pack(side=tk.LEFT)
+    zoom_out_button.pack(side=tk.LEFT)
+    save_button.config(takefocus=False)
+    add_button.config(takefocus=False)
+    zoom_in_button.config(takefocus=False)
+    zoom_out_button.config(takefocus=False)
+    buttons.pack(pady=int(SCALE), side=tk.TOP)
+    # Create or read boxes
+    if os.path.isfile(filename) and len(sys.argv) != 1 :
+        with open(filename) as f:
+            contents = f.read()
+        boxes = []
+        deserialize(contents, boxes, root)
+        minwidth = SCALE*max([box.orig_xloc + box.width for box in boxes])
+        if winx < minwidth: winx = int(minwidth*1.05)
+        minheight = SCALE*max([box.orig_yloc + box.height for box in boxes])
+        if winy < minheight: winy = int(minheight*1.05)
+        root.geometry(str(winx)+"x"+str(winy))
+        LastSavedState = contents
+    else:
+        boxes = [
+            Box(root, "Box1", 10, 10, PALETTE[0], "I am blue"),
+            Box(root, "Box2", 100, 25, PALETTE[1], "Intro"),
+            Box(root, "Box3", 200, 125, PALETTE[2], "GPU")
+        ]
+
+    # Start the main loop
+    
+    try:
+        pass #sv_ttk.set_theme("dark")
+    except:
+        pass
+    
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
