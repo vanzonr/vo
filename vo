@@ -190,7 +190,7 @@ def on_save_button_click(obj):
     LastSavedState = contents
     answer = showinfo(message="Boxes have been saved to "+filename)
 
-def on_add_button_click(root):
+def on_add_button_click(root,obj):
     global boxes, LastUp
     locx = int(100*SCALE)
     locy = int(100*SCALE)
@@ -360,25 +360,26 @@ def main():
     root.bind("<Shift-Up>", partial(on_arrow_key,root,0,-15))
     root.bind("<Shift-Down>", partial(on_arrow_key,root,0,+15))
     root.bind("<Control-s>", on_save_button_click) 
+    root.bind("<Control-n>", partial(on_add_button_click,root)) 
     root.bind("<Control-equal>",lambda event: rebuild(root,+1))
     root.bind("<Control-minus>",lambda event: rebuild(root,-1))
     root.bind("<Control-0>",lambda event: rebuild(root,6*FRACFACTOR-SCALELEVEL))
     # Control buttons
     buttons = tk.Frame(root)
     save_button = tk.Button(buttons,
-                            text="Save",
+                            text="^S Save",
                             font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)),
                             command=partial(on_save_button_click,root))
     add_button = tk.Button(buttons,
-                           text="&",
+                           text="^N New Box",
                            font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)),
-                           command=partial(on_add_button_click,root))
+                           command=partial(on_add_button_click,root,None))
     zoom_in_button = tk.Button(buttons,
-                           text="-",
+                           text="^- Zoom Out",
                            font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)),
                            command=partial(rebuild,root,-1))
     zoom_out_button = tk.Button(buttons,
-                           text="+",
+                           text="^+ Zoom In",
                            font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)),
                            command=partial(rebuild,root,1))
     save_button.pack(side=tk.LEFT)
@@ -396,9 +397,17 @@ def main():
             contents = f.read()
         boxes = []
         deserialize(contents, boxes, root)
-        minwidth = SCALE*max([box.orig_xloc + box.width for box in boxes])
+        allwidths = [box.orig_xloc + box.width for box in boxes]
+        if allwidths:
+            minwidth = SCALE*max(allwidths)
+        else:
+            minwidth = 0
         if winx < minwidth: winx = int(minwidth*1.05)
-        minheight = SCALE*max([box.orig_yloc + box.height for box in boxes])
+        allheights = [box.orig_yloc + box.height for box in boxes]
+        if allheights:
+            minheight = SCALE*max(allheights)
+        else:
+            minheight = 0
         if winy < minheight: winy = int(minheight*1.05)
         root.geometry(str(winx)+"x"+str(winy))
         LastSavedState = contents
