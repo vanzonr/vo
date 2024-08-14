@@ -65,11 +65,11 @@ FONTPOINTS = 10//FRACFACTOR
 # Control buttons functionality
 LastSavedState = None
 boxes = []
-filename = "VizOrg.vo"
+filename = "VizOrg.yaml"
 
 def on_close_button_click(root):
     global boxes, LastSavedState, filename
-    contents = serialize(boxes)
+    contents = yaml_serialize(boxes)
     if contents != LastSavedState:
         savefirst = askyesnocancel(message="There are unsaved changes. Do you wish to save them before exiting?")
     else:
@@ -83,7 +83,7 @@ def on_close_button_click(root):
         return    
     root.destroy()
 
-def serialize(boxes):
+def legacy_serialize(boxes):
     #create the data first
     stream = io.StringIO()
     for id, box in enumerate(boxes):
@@ -108,9 +108,33 @@ def serialize(boxes):
     contents = stream.getvalue()
     return contents
 
-def deserialize(contents, boxes, root):
+def yaml_serialize(boxes):
+    #create the data first
+    stream = io.StringIO()
+    print("Boxes:", file=stream)
+    for id, box in enumerate(boxes):
+        try:
+            text = box.text.get("1.0",tk.END)
+        except:
+            text = ""
+        print("  - id:", id, file=stream)
+        print("    title: \"" + box.title.get().strip() + '"', file=stream)
+        print("    x:", int(box.winfo_x()/SCALE), file=stream)
+        print("    y:", int(box.winfo_y()/SCALE), file=stream)
+        print("    width:", int(box.width), file=stream)
+        print("    height:", int(box.height), file=stream)
+        print("    background:", '"'+box["background"]+'"', file=stream)
+        if text.strip() == "":
+            print("    text: \"\"", file=stream)
+        else:
+            print("    text: |", file=stream)
+            print('\n'.join(['      '+line for line in text.strip().split('\n')]), file=stream)
+    contents = stream.getvalue()
+    return contents
+
+def legacy_deserialize(contents, boxes, root):
     global LastSavedState
-    lines = contents.splitlines()    
+    lines = contents.splitlines()
     i = 0
     while i < len(lines):
         rawline = lines[i]
@@ -150,6 +174,64 @@ def deserialize(contents, boxes, root):
             print("WARNING: Unused option '"+line+"'")
     LastSavedState = contents
     
+def yaml_deserialize(contents, boxes, root):
+    global LastSavedState
+    lines = contents.splitlines()
+    if lines[0] != "Boxes:":
+        print("ERROR: incorrect file format (not yaml?)")
+        sys.exit(8)
+    i = 0
+    thisbox = None
+    while i < len(lines):
+        rawline = lines[i]
+        line = rawline.strip()
+        i += 1
+        if rawline[:8] == "  - id: ":
+            if thisbox:
+                boxes.append(Box(root,
+                                 thisbox["title"],
+                                 thisbox["x"],
+                                 thisbox["y"],
+                                 thisbox["background"],
+                                 thisbox["text"],
+                                 thisbox["width"],
+                                 thisbox["height"]))
+                root.update()
+            thisbox = {"x": 0, "y": 0, "background": "white", "title": "Box"+str(i), "text": "", "width": 200, "height": 200}
+        elif line[:2] == "x:":
+            thisbox["x"] = int(float(line[2:]))
+        elif line[:2] == "y:":
+            thisbox["y"] = int(float(line[2:]))
+        elif line[:13] == 'background: "':
+            thisbox["background"] = line[13:-1]
+        elif line[:8] == 'title: "':
+            thisbox["title"] = line[8:-1]
+        elif line[:7] == 'width: ':
+            thisbox["width"] = int(float(line[7:]))
+        elif line[:8] == 'height: ':
+            thisbox["height"] = int(float(line[8:]))
+        elif line[:7] == 'text: |':
+            nlines = 1
+            while i+nlines < len(lines) and lines[i+nlines][:6] == "      ":
+                nlines += 1
+            thisbox["text"] = '\n'.join([l[6:] for l in lines[i:i+nlines]])
+            i += nlines
+        elif line == 'Boxes:' or line == 'text: ""':
+            pass
+        else:
+            print("WARNING: Unused option '"+line+"'")
+    if thisbox:
+        boxes.append(Box(root,
+                         thisbox["title"],
+                         thisbox["x"],
+                         thisbox["y"],
+                         thisbox["background"],
+                         thisbox["text"],
+                         thisbox["width"],
+                         thisbox["height"]))
+        root.update()
+    LastSavedState = contents
+    
 def rebuild(root, rescale=0):
     global boxes, SCALE, SCALELEVEL, SCALES, LastUp
     newscalelevel = SCALELEVEL + rescale
@@ -158,7 +240,7 @@ def rebuild(root, rescale=0):
     newscale = SCALES[newscalelevel]
     if rescale == 0 or newscale != SCALE:
         scalefactor = newscale/SCALE
-        state = serialize(boxes)
+        state = yaml_serialize(boxes)
         n = len(boxes)
         LastUpI = None
         # increase the size of the window
@@ -178,13 +260,13 @@ def rebuild(root, rescale=0):
             del boxes[i];
         SCALELEVEL = newscalelevel
         SCALE = newscale
-        deserialize(state, boxes, root)
+        yaml_deserialize(state, boxes, root)
         if LastUpI:
             LastUp = boxes[LastUpI]
 
 def on_save_button_click(obj):
     global boxes, filename, LastSavedState
-    contents = serialize(boxes)
+    contents = yaml_serialize(boxes)
     with open(filename,"w") as writefile:
         print(contents, end='', file=writefile)
     LastSavedState = contents
@@ -339,7 +421,7 @@ def main():
     if len(sys.argv) >= 2:
         filename = sys.argv[1]
     else:
-        filename = "VizOrg.vo"
+        filename = "VizOrg.yaml"
     # Create the main window
     winx = int(800*SCALE)
     winy = int(350*SCALE)
@@ -396,7 +478,7 @@ def main():
         with open(filename) as f:
             contents = f.read()
         boxes = []
-        deserialize(contents, boxes, root)
+        yaml_deserialize(contents, boxes, root)
         allwidths = [box.orig_xloc + box.width for box in boxes]
         if allwidths:
             minwidth = SCALE*max(allwidths)
