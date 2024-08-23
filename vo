@@ -83,31 +83,6 @@ def on_close_button_click(root):
         return    
     root.destroy()
 
-def legacy_serialize(boxes):
-    #create the data first
-    stream = io.StringIO()
-    for id, box in enumerate(boxes):
-        try:
-            text = box.text.get("1.0",tk.END)
-        except:
-            text = ""
-        print("Box", file=stream)
-        print("    id:", id, file=stream)
-        print("    title: \"" + box.title.get().strip() + '"', file=stream)
-        print("    x:", int(box.winfo_x()/SCALE), file=stream)
-        print("    y:", int(box.winfo_y()/SCALE), file=stream)
-        print("    width:", int(box.width), file=stream)
-        print("    height:", int(box.height), file=stream)
-        print("    background:", '"'+box["background"]+'"', file=stream)
-        if text.strip() == "":
-            print("    text[0]:", file=stream)
-        else:
-            print("    text["+str(len(text.splitlines()))+"]:", file=stream)
-            print(text[:-1], file=stream)
-        print("EndBox", file=stream)
-    contents = stream.getvalue()
-    return contents
-
 def yaml_serialize(boxes):
     #create the data first
     stream = io.StringIO()
@@ -131,48 +106,6 @@ def yaml_serialize(boxes):
             print('\n'.join(['      '+line for line in text.strip().split('\n')]), file=stream)
     contents = stream.getvalue()
     return contents
-
-def legacy_deserialize(contents, boxes, root):
-    global LastSavedState
-    lines = contents.splitlines()
-    i = 0
-    while i < len(lines):
-        rawline = lines[i]
-        line = rawline.strip()
-        i += 1
-        if line == "Box":
-            thisbox = {"x": 0, "y": 0, "background": "white", "title": "Box"+str(i), "text": "", "width": 200, "height": 200}
-        elif line[:2] == "x:":
-            thisbox["x"] = int(float(line[2:]))
-        elif line[:2] == "y:":
-            thisbox["y"] = int(float(line[2:]))
-        elif line[:13] == 'background: "':
-            thisbox["background"] = line[13:-1]
-        elif line[:8] == 'title: "':
-            thisbox["title"] = line[8:-1]
-        elif line[:7] == 'width: ':
-            thisbox["width"] = int(float(line[7:]))
-        elif line[:8] == 'height: ':
-            thisbox["height"] = int(float(line[8:]))
-        elif line[:5] == 'text[':
-            nlines = int(line[5:line.index(']')])
-            thisbox["text"] = '\n'.join(lines[i:i+nlines])
-            i += nlines
-        elif line == "EndBox":
-            boxes.append(Box(root,
-                             thisbox["title"],
-                             thisbox["x"],
-                             thisbox["y"],
-                             thisbox["background"],
-                             thisbox["text"],
-                             thisbox["width"],
-                             thisbox["height"]))
-            root.update()
-        elif line[:4] == "id: ":
-            pass
-        else:
-            print("WARNING: Unused option '"+line+"'")
-    LastSavedState = contents
     
 def yaml_deserialize(contents, boxes, root):
     global LastSavedState
@@ -495,9 +428,7 @@ def main():
         LastSavedState = contents
     else:
         boxes = [
-            Box(root, "Box1", 10, 10, PALETTE[0], "I am blue"),
-            Box(root, "Box2", 100, 25, PALETTE[1], "Intro"),
-            Box(root, "Box3", 200, 125, PALETTE[2], "GPU")
+            Box(root, "Editable Title", 100, 100, PALETTE[1], "The file "+filename+" does not yet exists, so here's a box"),
         ]
 
     # Start the main loop
