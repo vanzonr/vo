@@ -65,6 +65,7 @@ FONTPOINTS = 10//FRACFACTOR
 # Control buttons functionality
 LastSavedState = None
 boxes = []
+origin = [0,0]
 filename = "VizOrg.yaml"
 
 def on_close_button_click(root):
@@ -347,6 +348,21 @@ def on_arrow_key(root, dx, dy, event):
         nowx, nowy= LastUp.winfo_x(), LastUp.winfo_y()
         LastUp.place(x=nowx+int(dx*SCALE),y=nowy+int(dy*SCALE))
 
+def on_ctrl_arrow_key(root, dx, dy, event):
+    global origin, boxes
+    if dx != 0 or dy != 0:
+        for box in boxes:
+            nowx, nowy= box.winfo_x(), box.winfo_y()
+            box.place(x=nowx+int(dx*SCALE),y=nowy+int(dy*SCALE))
+        origin[0] += int(dx*SCALE)
+        origin[1] += int(dy*SCALE)
+    else:
+        for box in boxes:
+            nowx, nowy= box.winfo_x(), box.winfo_y()
+            box.place(x=nowx-origin[0],y=nowy-origin[1])
+        origin[0] = 0
+        origin[1] = 0
+    
 def main():
     global boxes,filename
     # Command line arguments
@@ -374,6 +390,11 @@ def main():
     root.bind("<Shift-Right>", partial(on_arrow_key,root,+15,0))
     root.bind("<Shift-Up>", partial(on_arrow_key,root,0,-15))
     root.bind("<Shift-Down>", partial(on_arrow_key,root,0,+15))
+    root.bind("<Control-Home>", partial(on_ctrl_arrow_key,root,0,0))
+    root.bind("<Control-Left>", partial(on_ctrl_arrow_key,root,-15,0))
+    root.bind("<Control-Right>", partial(on_ctrl_arrow_key,root,+15,0))
+    root.bind("<Control-Up>", partial(on_ctrl_arrow_key,root,0,-15))
+    root.bind("<Control-Down>", partial(on_ctrl_arrow_key,root,0,+15))
     root.bind("<Control-s>", on_save_button_click) 
     root.bind("<Control-n>", partial(on_add_button_click,root)) 
     root.bind("<Control-equal>",lambda event: rebuild(root,+1))
