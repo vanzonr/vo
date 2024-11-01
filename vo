@@ -427,7 +427,7 @@ def find_text(result_text,find_entry, event):
             start_pos = "1.0"
             while True:
                 # Find the position of the text
-                start_pos = box.text.search(search_text, start_pos, stopindex="end")
+                start_pos = box.text.search(search_text, start_pos, stopindex="end", nocase=1)
                 if not start_pos:
                     # If the text is not found, exit the loop
                     break
