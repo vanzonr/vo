@@ -12,6 +12,7 @@ from tkinter.scrolledtext import ScrolledText
 from tkinter.messagebox import askquestion, showwarning, showinfo, askyesnocancel
 import tkinter.font as fnt
 from tkinter import Text, Entry, Label
+from tkinter import ttk
 import time
 
 try:
@@ -206,6 +207,28 @@ def rebuild(root, area, rescale=0):
         if LastUpI:
             LastUp = boxes[LastUpI]
 
+def on_help_button_click(obj):
+    helpmessage = """vo is a visual organizer of notes in boxes, that are saved as yaml files.
+Basic mouse operations:
+  Left click on title: start editing
+  Left click on text: start editing
+  Right click on border: change color
+  Left mouse down on border: start move
+Basic keyboard operations:
+  Ctrl-h : this help
+  Ctrl-s : save boxes
+  Ctrl-n : create a new box
+  Ctrl-+ : increase zoom and window
+  Ctrl-- : decrease zoom and window
+  Ctrl-f : text search 
+  Esc : stop editing
+  Alt-Left arrow: decrease box width
+  Alt-Right arrow: increase box width
+  Alt-Up arrow: decrease box height
+  Alt-Down arrow: increase box height
+    """
+    answer = showinfo(message=helpmessage)
+
 def on_save_button_click(obj):
     global boxes, filename, LastSavedState
     contents = yaml_serialize(boxes)
@@ -345,35 +368,49 @@ class Box(tk.Frame):
         self.bind("<ButtonRelease-1>", partial(on_mouse_up, self))
         self.bind("<Button-3>", partial(on_right_mouse_down, self))
         linewidth = width//8 - 3
-        self.title = Entry(self, width=linewidth+3, justify="center", font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)))
-        self.title.place(relx=.5,rely=0,anchor='n')
-        self.title.config(background=background, fg=ETTELAP[colorindex])
-        self.title.insert(0,title)
-        self.title.config(takefocus=False)
+        self.title = Entry(self, width=linewidth+3, justify="center",
+                          font=fnt.Font(family=FONTFAMILY,size=int(FONTPOINTS*SCALE)))
         textwidth = linewidth - 1
         textheight = height//16-3
         self.text = ScrolledText(self, height = textheight, width = textwidth, wrap = tk.WORD, font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)))
-        self.text.place(relx=.5,rely=.5,anchor='c')
-        self.text.insert(tk.END,text)
-        self.text.vbar.config(takefocus=False)
         self.width = width
         self.height = height
         self.orig_xloc = xloc
         self.orig_yloc = yloc
-        self.width_button = tk.Button(self, text="<>",
-                                      font = fnt.Font(family=FONTFAMILY, size = int(FONTPOINTS*SCALE)),
-                                      width=2,height=1,padx=0,pady=0,
-                                      command=partial(on_width_click,self,-1,None))
+        self.width_button = ttk.Button(self, text=u"∥",
+                                       width=1,
+                                       command=partial(on_width_click,self,-1,None))
+       #                        tk.Button(self, text="<>",
+       #                               font = fnt.Font(family=FONTFAMILY, size = int(FONTPOINTS*SCALE)),
+       #                               width=2,height=1,padx=0,pady=0,
+       #                               command=partial(on_width_click,self,-1,None))
         self.width_button.bind("<Button-3>", partial(on_width_click,self,+1))
         self.width_button.place(relx=0.0, rely=0.0)
         self.width_button.config(takefocus=False)        
         width_width = self.width_button.winfo_reqwidth()
-        self.close_button = tk.Button(self,
-                                      text="x",font = fnt.Font(family=FONTFAMILY, size = int(FONTPOINTS*SCALE)),
-                                      width=2,height=1,padx=0,pady=0,
-                                      command=partial(on_x_click,self))
+        width_height = self.width_button.winfo_reqheight()
+        self.close_button = ttk.Button(self, text="x",
+                                       width=1,
+                                       command=partial(on_x_click,self))
+        #                   tk.Button(self,
+        #                             text="x",font = fnt.Font(family=FONTFAMILY, size = int(FONTPOINTS*SCALE)),
+        #                              width=2,height=1,padx=0,pady=0,
+        #                              command=partial(on_x_click,self))
         self.close_button.place(x=width*SCALE-width_width-7, rely=0.0)
         self.close_button.config(takefocus=False)
+        self.title.place(relx=.5,rely=0,height=width_height,anchor='n')
+        self.title.config(background=background, fg=ETTELAP[colorindex])
+        self.title.insert(0,title)
+        self.title.config(takefocus=False)
+        my_height = self.winfo_reqheight()-2*int(3*SCALE)
+        my_width = self.winfo_reqheight()-2*int(3*SCALE)
+        self.text.place(relx=.5,
+                        y=width_height,
+                        height=my_height-2*width_height,
+                        width=my_width-2*width_width,
+                        anchor='n')
+        self.text.insert(tk.END,text)
+        self.text.vbar.config(takefocus=False)
    
 def defocus(area, event):
     global LastUp
@@ -460,12 +497,12 @@ def main():
     else:
         filename = "VizOrg.yaml"
     # Create the main window
-    winx = int(800*SCALE)
-    winy = int(350*SCALE)
+    winx = int(1000*SCALE)
+    winy = int(500*SCALE)
     root = tk.Tk()
     try:
         pass #
-        #sv_ttk.set_theme("dark")
+        sv_ttk.set_theme("dark")
     except:
         pass
     root.title("VizOrg "+filename)
@@ -489,6 +526,7 @@ def main():
     root.bind("<Control-Up>", partial(on_ctrl_arrow_key,root,0,15))
     root.bind("<Control-Down>", partial(on_ctrl_arrow_key,root,0,-15))
     root.bind("<Control-s>", on_save_button_click)
+    root.bind("<Control-h>", on_help_button_click)
     root.bind("<Control-n>", partial(on_add_button_click,root))
     root.bind("<Control-equal>",lambda event: rebuild(root,area,+1))
     root.bind("<Control-minus>",lambda event: rebuild(root,area,-1))
@@ -500,40 +538,48 @@ def main():
     # Control buttonss
     buttons = tk.Frame(root, bg="white")
     area = tk.Frame(root, bg="#888")
-    save_button = tk.Button(buttons,
+    help_button = ttk.Button(buttons,
+                            text="Help",
+                            #font = fnt.Font(family=FONTFAMILY,
+                            #                size = int(FONTPOINTS*SCALE)),
+                            underline=0,
+                            command=partial(on_help_button_click,area))
+    save_button = ttk.Button(buttons,
                             text="Save",
-                            font = fnt.Font(family=FONTFAMILY,
-                                            size = int(FONTPOINTS*SCALE)),
+                            #font = fnt.Font(family=FONTFAMILY,
+                            #                size = int(FONTPOINTS*SCALE)),
                             underline=0,
                             command=partial(on_save_button_click,area))
-    add_button = tk.Button(buttons,
+    add_button = ttk.Button(buttons,
                            text="New Box",
-                           font = fnt.Font(family=FONTFAMILY,
-                                           size = int(FONTPOINTS*SCALE)),
+                           #font = fnt.Font(family=FONTFAMILY,
+                           #                size = int(FONTPOINTS*SCALE)),
                            underline=0,
                            command=partial(on_add_button_click,area,None))
-    zoom_in_button = tk.Button(buttons,
+    zoom_in_button = ttk.Button(buttons,
                            text="-",
-                           font = fnt.Font(family=FONTFAMILY,
-                                           size = int(FONTPOINTS*SCALE)),
+                           #font = fnt.Font(family=FONTFAMILY,
+                           #                size = int(FONTPOINTS*SCALE)),
                            underline=0,
                            command=partial(rebuild,root,area,-1))
-    zoom_out_button = tk.Button(buttons,
+    zoom_out_button = ttk.Button(buttons,
                            text="+",
-                           font = fnt.Font(family=FONTFAMILY,
-                                           size = int(FONTPOINTS*SCALE)),
+                           #font = fnt.Font(family=FONTFAMILY,
+                           #                size = int(FONTPOINTS*SCALE)),
                            underline=0,
                            command=partial(rebuild,root,area,1))
-    find_entry = tk.Entry(buttons, width=40)
-    result_text = Text(buttons, width = 16, height=1,font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)))        
+    find_entry = ttk.Entry(buttons, width=40)
+    result_text = Text(buttons, width = 16, height=1,font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)))
+    #result_text = ttk.Text(buttons, width = 16, height=1)
     root.bind("<Control-f>", partial(focus_on,result_text,find_entry)) 
-    find_button = tk.Button(buttons,
+    find_button = ttk.Button(buttons,
                             text="Find",
-                            font = fnt.Font(family=FONTFAMILY,
-                                            size = int(FONTPOINTS*SCALE)),
+                            #font = fnt.Font(family=FONTFAMILY,
+                            #                size = int(FONTPOINTS*SCALE)),
                             underline=0,
                             command=partial(focus_on,result_text,find_entry,None))
     find_entry.bind("<Return>", partial(find_text,result_text,find_entry))
+    help_button.pack(side=tk.LEFT)
     save_button.pack(side=tk.LEFT)
     add_button.pack(side=tk.LEFT)
     zoom_in_button.pack(side=tk.LEFT)
