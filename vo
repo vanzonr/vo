@@ -403,7 +403,7 @@ class Box(tk.Frame):
         self.title.insert(0,title)
         self.title.config(takefocus=False)
         my_height = self.winfo_reqheight()-2*int(3*SCALE)
-        my_width = self.winfo_reqheight()-2*int(3*SCALE)
+        my_width = self.winfo_reqwidth()-2*int(3*SCALE)
         self.text.place(relx=.5,
                         y=width_height,
                         height=my_height-2*width_height,
