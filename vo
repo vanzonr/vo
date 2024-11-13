@@ -369,7 +369,7 @@ class Box(tk.Frame):
         self.bind("<Button-3>", partial(on_right_mouse_down, self))
         linewidth = width//8 - 3
         self.title = Entry(self, width=linewidth+3, justify="center",
-                          font=fnt.Font(family=FONTFAMILY,size=int(FONTPOINTS*SCALE)))
+                          font=fnt.Font(family=FONTFAMILY,size=int(FONTPOINTS*SCALE),weight="bold"))
         textwidth = linewidth - 1
         textheight = height//16-3
         self.text = ScrolledText(self, height = textheight, width = textwidth, wrap = tk.WORD, font = fnt.Font(family=FONTFAMILY,size = int(FONTPOINTS*SCALE)))
@@ -398,7 +398,7 @@ class Box(tk.Frame):
         #                              command=partial(on_x_click,self))
         self.close_button.place(x=width*SCALE-width_width-7, rely=0.0)
         self.close_button.config(takefocus=False)
-        self.title.place(relx=.5,rely=0,anchor='n')
+        self.title.place(relx=.5,rely=0,width=int(width*SCALE)-int(6*SCALE),anchor='n')
         title_height = self.title.winfo_reqheight()
         topbar_height = title_height
         if (title_height < width_height):
@@ -544,8 +544,8 @@ def main():
     root.bind("<Alt-Left>", partial(on_alt_arrow_key,root,-1,0))
     root.bind("<Alt-Right>", partial(on_alt_arrow_key,root,+1,0))
     # Control buttonss
-    buttons = tk.Frame(root, bg="white")
-    area = tk.Frame(root, bg="#888")
+    buttons = ttk.Frame(root) #, bg="white")
+    area = tk.Frame(root, bg="#777")
     help_button = ttk.Button(buttons,
                             text="Help",
                             #font = fnt.Font(family=FONTFAMILY,
