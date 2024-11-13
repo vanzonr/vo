@@ -398,20 +398,27 @@ class Box(tk.Frame):
         #                              command=partial(on_x_click,self))
         self.close_button.place(x=width*SCALE-width_width-7, rely=0.0)
         self.close_button.config(takefocus=False)
-        self.title.place(relx=.5,rely=0,height=width_height,anchor='n')
+        self.title.place(relx=.5,rely=0,anchor='n')
+        title_height = self.title.winfo_reqheight()
+        topbar_height = title_height
+        if (title_height < width_height):
+            topbar_height = width_height
+            self.title.place(relx=.5,rely=0,height=topbar_height,anchor='n')
         self.title.config(background=background, fg=ETTELAP[colorindex])
         self.title.insert(0,title)
         self.title.config(takefocus=False)
         my_height = self.winfo_reqheight()-2*int(3*SCALE)
         my_width = self.winfo_reqwidth()-2*int(3*SCALE)
         self.text.place(relx=.5,
-                        y=width_height,
-                        height=my_height-2*width_height,
+                        y=topbar_height,
+                        height=my_height-2*topbar_height,
                         width=my_width-2*width_width,
                         anchor='n')
         self.text.insert(tk.END,text)
         self.text.vbar.config(takefocus=False)
-   
+        self.width_button.place(relx=0.0, rely=0.0, height=topbar_height)
+        self.close_button.place(x=width*SCALE-width_width-7, height=topbar_height, rely=0.0)
+        
 def defocus(area, event):
     global LastUp
     if type(area.focus_get()) == tk.scrolledtext.ScrolledText:
@@ -502,6 +509,7 @@ def main():
     root = tk.Tk()
     try:
         pass #
+        #sv_ttk.set_theme("dark")
         sv_ttk.set_theme("dark")
     except:
         pass
@@ -584,6 +592,9 @@ def main():
     add_button.pack(side=tk.LEFT)
     zoom_in_button.pack(side=tk.LEFT)
     zoom_out_button.pack(side=tk.LEFT)
+    find_entry.config(takefocus=False)
+    result_text.config(takefocus=False)
+    help_button.config(takefocus=False)
     save_button.config(takefocus=False)
     add_button.config(takefocus=False)
     zoom_in_button.config(takefocus=False)
@@ -591,6 +602,7 @@ def main():
     find_button.pack(side=tk.LEFT)
     find_entry.pack(side=tk.LEFT)
     find_button.pack(side=tk.LEFT)
+    find_button.config(takefocus=False)
     result_text.pack(side=tk.LEFT)
     buttons.pack(pady=int(SCALE), side=tk.TOP)
     area.pack(side="top", fill="both", expand=True)
