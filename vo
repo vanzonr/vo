@@ -15,8 +15,14 @@ from tkinter import Text, Entry, Label
 from tkinter import ttk
 import time
 
+sv_ttk_avail = False
+sv_ttk_theme_no = 0
+sv_ttk_themes = ["light","dark"]
+sv_ttk_backgrounds = ["white","black"]
+
 try:
     import sv_ttk
+    sv_ttk_avail = True
 except:
     pass
 
@@ -206,6 +212,12 @@ def rebuild(root, area, rescale=0):
         yaml_deserialize(state, boxes, area)
         if LastUpI:
             LastUp = boxes[LastUpI]
+
+def on_darklight_button_click(root):
+    global sv_ttk_theme_no
+    sv_ttk_theme_no = (sv_ttk_theme_no + 1 ) % len(sv_ttk_themes)
+    sv_ttk.set_theme(sv_ttk_themes[sv_ttk_theme_no])
+    root.configure(bg=sv_ttk_backgrounds[sv_ttk_theme_no])
 
 def on_help_button_click(obj):
     helpmessage = """vo is a visual organizer of notes in boxes, that are saved as yaml files.
@@ -509,15 +521,14 @@ def main():
     root = tk.Tk()
     try:
         pass #
-        #sv_ttk.set_theme("dark")
-        sv_ttk.set_theme("dark")
+        sv_ttk.set_theme(sv_ttk_themes[sv_ttk_theme_no])
     except:
         pass
     root.title("VizOrg "+filename)
     root.resizable(True, True)
     root.geometry(str(winx)+"x"+str(winy)) 
     root.protocol("WM_DELETE_WINDOW", partial(on_close_button_click,root))
-    root.configure(bg="white")
+    root.configure(bg=sv_ttk_backgrounds[sv_ttk_theme_no])
     root.bind("<Double-Button-1>", partial(defocus,root))
     root.bind("<Escape>", partial(defocus,root))
     root.bind("<Left>", partial(on_arrow_key,root,-1,0))
@@ -546,6 +557,10 @@ def main():
     # Control buttonss
     buttons = ttk.Frame(root) #, bg="white")
     area = tk.Frame(root, bg="#777")
+    if sv_ttk_avail:
+        darklight_button = ttk.Button(buttons,
+                                      text="Dark/Light",
+                                      command=partial(on_darklight_button_click,root))
     help_button = ttk.Button(buttons,
                             text="Help",
                             #font = fnt.Font(family=FONTFAMILY,
@@ -587,6 +602,9 @@ def main():
                             underline=0,
                             command=partial(focus_on,result_text,find_entry,None))
     find_entry.bind("<Return>", partial(find_text,result_text,find_entry))
+    if sv_ttk_avail:
+        darklight_button.pack(side=tk.LEFT)
+        darklight_button.config(takefocus=False)
     help_button.pack(side=tk.LEFT)
     save_button.pack(side=tk.LEFT)
     add_button.pack(side=tk.LEFT)
