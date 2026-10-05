@@ -83,6 +83,15 @@ boxes = []
 origin = [0,0]
 filename = "VizOrg.yaml"
 
+import webbrowser
+
+def open_selected_text(text_widget, event):
+    try:
+        selected_text = text_widget.get(tk.SEL_FIRST, tk.SEL_LAST).strip()
+        webbrowser.open(selected_text)
+    except tk.TclError:
+        print("No text selected.")
+
 def on_close_button_click(root):
     global boxes, LastSavedState, filename
     contents = yaml_serialize(boxes)
@@ -430,7 +439,8 @@ class Box(tk.Frame):
         self.text.vbar.config(takefocus=False)
         self.width_button.place(relx=0.0, rely=0.0, height=topbar_height)
         self.close_button.place(x=width*SCALE-width_width-7, height=topbar_height, rely=0.0)
-        
+        self.text.bind("<Button-3>", partial(open_selected_text,self.text))
+
 def defocus(area, event):
     global LastUp
     if type(area.focus_get()) == tk.scrolledtext.ScrolledText:
