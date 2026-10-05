@@ -230,10 +230,12 @@ def on_darklight_button_click(root):
 
 def on_help_button_click(obj):
     helpmessage = """vo is a visual organizer of notes in boxes, that are saved as yaml files.
+    
 Basic mouse operations:
   Left click on title: start editing
   Left click on text: start editing
   Right click on border: change color
+  Right click on selection: open link in browser
   Left mouse down on border: start move
 Basic keyboard operations:
   Ctrl-h : this help
@@ -241,12 +243,12 @@ Basic keyboard operations:
   Ctrl-n : create a new box
   Ctrl-+ : increase zoom and window
   Ctrl-- : decrease zoom and window
-  Ctrl-f : text search 
+  Ctrl-f : text search
+  Ctrl-Tab: select next box and start editing
   Esc : stop editing
-  Alt-Left arrow: decrease box width
-  Alt-Right arrow: increase box width
-  Alt-Up arrow: decrease box height
-  Alt-Down arrow: increase box height
+  Alt-Left/Alt-Right: decrease/increase box width
+  Alt-Up/Alt-Down: decrease/increase box height
+  Ctrl-Down/Up/Left/Right: move all boxes  
     """
     answer = showinfo(message=helpmessage)
 
@@ -534,6 +536,7 @@ def main():
         sv_ttk.set_theme(sv_ttk_themes[sv_ttk_theme_no])
     except:
         pass
+    root.option_add('*Dialog.msg.font', '{'+FONTFAMILY+'} '+str(FONTPOINTS)) ###
     root.title("VizOrg "+filename)
     root.resizable(True, True)
     root.geometry(str(winx)+"x"+str(winy)) 
