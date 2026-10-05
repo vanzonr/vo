@@ -238,17 +238,18 @@ Basic mouse operations:
   Right click on selection: open link in browser
   Left mouse down on border: start move
 Basic keyboard operations:
-  Ctrl-h : this help
-  Ctrl-s : save boxes
-  Ctrl-n : create a new box
-  Ctrl-+ : increase zoom and window
-  Ctrl-- : decrease zoom and window
-  Ctrl-f : text search
-  Ctrl-Tab: select next box and start editing
-  Esc : stop editing
+  Ctrl-h    : this help
+  Ctrl-s    : save boxes
+  Ctrl-n    : create a new box
+  Ctrl-+/-  : increase/decrease zoom and window
+  Ctrl-0    : reset zoom and window
+  Ctrl-f   : text search
+  Ctrl-Tab : select next box and start editing
+  Esc       : stop editing
   Alt-Left/Alt-Right: decrease/increase box width
   Alt-Up/Alt-Down: decrease/increase box height
-  Ctrl-Down/Up/Left/Right: move all boxes  
+  Arrow keys: move selected box
+  Ctrl-Arrow: move all boxes  
     """
     answer = showinfo(message=helpmessage)
 
