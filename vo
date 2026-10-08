@@ -54,21 +54,71 @@ if detect_fractional_scaling():
 else:
     FRACFACTOR = 1
 
+DARKMODE=True
 # https://sashamaps.net/docs/resources/20-colors/
-PALETTE = ['#e6194B', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4',
-           '#42d4f4', '#f032e6', '#bfef45', '#fabed4', '#469990', '#dcbeff',
-           '#9A6324',
-           '#fffac8',
-           '#800000', '#aaffc3', '#808000', '#ffd8b1', '#000075', '#a9a9a9',
-           '#eeeeee',
-           '#000000']
-ETTELAP = ['#ffffff', '#000000', '#000000', '#ffffff', '#ffffff', '#ffffff',
-           '#000000', '#ffffff', '#000000', '#000000', '#ffffff', '#000000',
-           '#ffffff',
-           '#000000',
-           '#ffffff', '#000000', '#ffffff', '#000000', '#ffffff', '#000000',
-           '#000000',
-           '#ffffff']
+if DARKMODE:
+    MAROON = '#861614' # reddish brown
+    BROWN  = '#6a3919' # yellowish brown
+    OLIVE  = '#2a3a15' # olive green
+    TEAL   = '#316b65' 
+    NAVY   = '#330866' # violet
+    BLACK  = '#000000' # black
+    RED    = '#b72031' # red
+    ORANGE = '#e16f26' # orange
+    YELLOW = '#eada3d' # yellow
+    LIME   = '#76913b' # yellow green
+    GREEN  = '#5bbc43' # green
+    CYAN   = '#2fa9c8' 
+    BLUE   = '#4b67bb' # blue
+    PURPLE = '#760998' # purple
+    MAGENTA= '#8b0a88' # purplish red
+    GREY   = '#807f84' # grey
+    PINK   = '#c68ba6' 
+    APRICOT= '#dc8762' # yellowish pink
+    BEIGE  = '#c0c17f' # buff
+    MINT   = '#7ec9a1' 
+    LAVENDER='#d57eb3' # purplish pink
+    OFFWHITE='#cfcfcf'
+    WHITE  = '#eeeeee' # white
+else:
+    MAROON = '#800000' # reddish brown
+    BROWN  = '#9a6324' # yellowish brown
+    OLIVE  = '#808000' # olive green
+    TEAL   = '#469990' 
+    NAVY   = '#000075' # violet
+    BLACK  = '#000000' # black
+    RED    = '#e6194b' # red
+    ORANGE = '#f58231' # orange
+    YELLOW = '#ffe119' # yellow
+    LIME   = '#bfef45' # yellow green
+    GREEN  = '#3cb44b' # green
+    CYAN   = '#42d4f4' 
+    BLUE   = '#4363d8' # blue
+    PURPLE = '#911eb4' # purple
+    MAGENTA= '#f032e6' # purplish red
+    GREY   = '#a9a9a9' # grey
+    PINK   = '#fabed4' 
+    APRICOT= '#ffd8b1' # yellowish pink
+    BEIGE  = '#fffac8' # buff
+    MINT   = '#aaffc3' 
+    LAVENDER='#dcbeff' # purplish pink
+    OFFWHITE='#eeeeee'
+    WHITE  = '#ffffff' # white
+
+PALETTE = [RED, GREEN, YELLOW, BLUE, ORANGE, PURPLE,
+           CYAN, MAGENTA, LIME, PINK, TEAL, LAVENDER,
+           BROWN,
+           BEIGE,
+           MAROON, MINT, OLIVE, APRICOT, NAVY, GREY,
+           OFFWHITE,
+           BLACK]
+ETTELAP = [WHITE, BLACK, BLACK, WHITE, WHITE, WHITE,
+           BLACK, WHITE, BLACK, BLACK, WHITE, BLACK,
+           WHITE,
+           BLACK,
+           WHITE, BLACK, WHITE, BLACK, WHITE, BLACK,
+           BLACK,
+           WHITE]
 SCALELEVEL = 6*FRACFACTOR
 SCALES = [0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00, 1.15, 1.30, 1.45,
           1.60, 1.80, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50, 3.75, 4.00]
