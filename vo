@@ -21,13 +21,13 @@ sv_ttk_themes = ["light","dark"]
 sv_ttk_backgrounds = ["white","black"]
 
 try:
-    import sv_ttk
+    import sv_ttk # type: ignore[import-not-found]
     sv_ttk_avail = True
 except:
     pass
 
 def detect_fractional_scaling():
-    from subprocess import check_output, STDOUT
+    from subprocess import check_output, STDOUT, CalledProcessError
     try:
         output = check_output(
             ["gsettings", "get", "org.gnome.mutter", "experimental-features"],
@@ -35,8 +35,11 @@ def detect_fractional_scaling():
         ).decode().strip()
         if any(key in output for key in ['scale-monitor-framebuffer', 'fractional-scaling']):
             return True
-    except subprocess.CalledProcessError as e:
+    except CalledProcessError as e:
         pass
+    except Exception as e:
+        print("ERROR: failed to detect fractional scaling (" + str(e) + ")")
+        sys.exit(8)
     return False
 
 def detect_x11():
@@ -54,71 +57,112 @@ if detect_fractional_scaling():
 else:
     FRACFACTOR = 1
 
-DARKMODE=True
-# https://sashamaps.net/docs/resources/20-colors/
-if DARKMODE:
-    MAROON = '#861614' # reddish brown
-    BROWN  = '#6a3919' # yellowish brown
-    OLIVE  = '#2a3a15' # olive green
-    TEAL   = '#316b65' 
-    NAVY   = '#330866' # violet
-    BLACK  = '#000000' # black
-    RED    = '#b72031' # red
-    ORANGE = '#e16f26' # orange
-    YELLOW = '#eada3d' # yellow
-    LIME   = '#76913b' # yellow green
-    GREEN  = '#5bbc43' # green
-    CYAN   = '#2fa9c8' 
-    BLUE   = '#4b67bb' # blue
-    PURPLE = '#760998' # purple
-    MAGENTA= '#8b0a88' # purplish red
-    GREY   = '#807f84' # grey
-    PINK   = '#c68ba6' 
-    APRICOT= '#dc8762' # yellowish pink
-    BEIGE  = '#c0c17f' # buff
-    MINT   = '#7ec9a1' 
-    LAVENDER='#d57eb3' # purplish pink
-    OFFWHITE='#cfcfcf'
-    WHITE  = '#eeeeee' # white
-else:
-    MAROON = '#800000' # reddish brown
-    BROWN  = '#9a6324' # yellowish brown
-    OLIVE  = '#808000' # olive green
-    TEAL   = '#469990' 
-    NAVY   = '#000075' # violet
-    BLACK  = '#000000' # black
-    RED    = '#e6194b' # red
-    ORANGE = '#f58231' # orange
-    YELLOW = '#ffe119' # yellow
-    LIME   = '#bfef45' # yellow green
-    GREEN  = '#3cb44b' # green
-    CYAN   = '#42d4f4' 
-    BLUE   = '#4363d8' # blue
-    PURPLE = '#911eb4' # purple
-    MAGENTA= '#f032e6' # purplish red
-    GREY   = '#a9a9a9' # grey
-    PINK   = '#fabed4' 
-    APRICOT= '#ffd8b1' # yellowish pink
-    BEIGE  = '#fffac8' # buff
-    MINT   = '#aaffc3' 
-    LAVENDER='#dcbeff' # purplish pink
-    OFFWHITE='#eeeeee'
-    WHITE  = '#ffffff' # white
+DARKMODE=False
+COLORS = {
+    False: {
+        # https://sashamaps.net/docs/resources/20-colors/
+        'MAROON':   '#800000',
+        'BROWN':    '#9a6324',
+        'OLIVE':    '#808000',
+        'TEAL':     '#469990',
+        'NAVY':     '#000075',
+        'BLACK':    '#000000',
+        'RED':      '#e6194b',
+        'ORANGE':   '#f58231',
+        'YELLOW':   '#ffe119',
+        'LIME':     '#bfef45',
+        'GREEN':    '#3cb44b',
+        'CYAN':     '#42d4f4',
+        'BLUE':     '#4363d8',
+        'PURPLE':   '#911eb4',
+        'MAGENTA':  '#f032e6',
+        'GREY':     '#a9a9a9',
+        'PINK':     '#fabed4',
+        'APRICOT':  '#ffd8b1',
+        'BEIGE':    '#fffac8',
+        'MINT':     '#aaffc3',
+        'LAVENDER': '#dcbeff',
+        'OFFWHITE': '#eeeeee',
+        'WHITE':    '#ffffff'
+    },
+    True: {
+        # https://artshacker.com/wp-content/uploads/2014/12/Kellys-22-colour-chart.jpg
+        'MAROON':   '#861614', # a.k.a. reddish brown
+        'BROWN':    '#6a3919', # a.k.a. yellowish brown
+        'OLIVE':    '#2a3a15', # a.k.a. olive green
+        'TEAL':     '#316b65',
+        'NAVY':     '#330866', # a.k.a. violet
+        'BLACK':    '#000000',
+        'RED':      '#b72031',
+        'ORANGE':   '#e16f26',
+        'YELLOW':   '#eada3d',
+        'LIME':     '#76913b', # a.k.a. yellow green
+        'GREEN':    '#5bbc43',
+        'CYAN':     '#2fa9c8',
+        'BLUE':     '#4b67bb',
+        'PURPLE':   '#760998',
+        'MAGENTA':  '#8b0a88', # a.k.a. purplish red
+        'GREY':     '#807f84',
+        'PINK':     '#c68ba6',
+        'APRICOT':  '#dc8762', # a.k.a. yellowish pink
+        'BEIGE':    '#c0c17f', # a.k.a. buff
+        'MINT':     '#7ec9a1',
+        'LAVENDER': '#d57eb3', # a.k.a. purplish pink
+        'OFFWHITE': '#cfcfcf',
+        'WHITE':    '#eeeeee'
+    },
+}
 
-PALETTE = [RED, GREEN, YELLOW, BLUE, ORANGE, PURPLE,
-           CYAN, MAGENTA, LIME, PINK, TEAL, LAVENDER,
-           BROWN,
-           BEIGE,
-           MAROON, MINT, OLIVE, APRICOT, NAVY, GREY,
-           OFFWHITE,
-           BLACK]
-ETTELAP = [WHITE, BLACK, BLACK, WHITE, WHITE, WHITE,
-           BLACK, WHITE, BLACK, BLACK, WHITE, BLACK,
-           WHITE,
-           BLACK,
-           WHITE, BLACK, WHITE, BLACK, WHITE, BLACK,
-           BLACK,
-           WHITE]
+def ettelap(background, white, black):
+    # return whichever of the two given foreground colours (white/black) has
+    # the best perceptual contrast (APCA Lc) against background (#rrggbb)
+    def screen_luminance(colour):
+        red_coeff, green_coeff, blue_coeff = 0.2126729, 0.7151522, 0.0721750
+        black_threshold = 0.022
+        black_clamp_exponent = 1.414
+        r, g, b = (int(colour[i:i+2], 16)/255 for i in (1, 3, 5))
+        luminance = (red_coeff*r**2.4 + green_coeff*g**2.4
+                     + blue_coeff*b**2.4)
+        if luminance < black_threshold:
+            return luminance + (black_threshold - luminance)**black_clamp_exponent
+        return luminance
+    def apca(text, backgr):
+        normal_backgr_exponent = 0.56
+        normal_text_exponent = 0.57
+        reverse_text_exponent = 0.62
+        reverse_backgr_exponent = 0.65
+        black_on_white_scale = 1.14
+        white_on_black_scale = 1.14
+        black_on_white_offset = 0.027
+        white_on_black_offset = 0.027
+        minimum_luminance_difference = 0.0005
+        low_contrast_cutoff = 0.1
+        text_luminance = screen_luminance(text)
+        background_luminance = screen_luminance(backgr)
+        if abs(background_luminance - text_luminance) < minimum_luminance_difference:
+            return 0.0
+        if background_luminance > text_luminance:   # dark text on light background
+            raw_contrast = ((background_luminance**normal_backgr_exponent
+                             - text_luminance**normal_text_exponent)
+                            * black_on_white_scale)
+            return raw_contrast - black_on_white_offset if raw_contrast >= low_contrast_cutoff else 0.0
+        raw_contrast = ((background_luminance**reverse_backgr_exponent
+                         - text_luminance**reverse_text_exponent)
+                        * white_on_black_scale)       # light text on dark background
+        return raw_contrast + white_on_black_offset if raw_contrast <= -low_contrast_cutoff else 0.0
+    if abs(apca(white, background)) >= abs(apca(black, background)):
+        return white
+    else:
+        return black
+
+PALETTE_NAMES = ['RED', 'GREEN', 'YELLOW', 'BLUE', 'ORANGE', 'PURPLE',
+                 'CYAN', 'MAGENTA', 'LIME', 'PINK', 'TEAL', 'LAVENDER',
+                 'BROWN',
+                 'BEIGE',
+                 'MAROON', 'MINT', 'OLIVE', 'APRICOT', 'NAVY', 'GREY',
+                 'OFFWHITE',
+                 'BLACK']
+PALETTE = [COLORS[DARKMODE][name] for name in PALETTE_NAMES]
 SCALELEVEL = 6*FRACFACTOR
 SCALES = [0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00, 1.15, 1.30, 1.45,
           1.60, 1.80, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50, 3.75, 4.00]
@@ -361,7 +405,8 @@ def on_right_mouse_down(obj, event):
             colorindexnow = i
     newcolorindex =(colorindexnow+1)%len(PALETTE)
     obj["background"] = PALETTE[newcolorindex]
-    obj.title.config(background=PALETTE[newcolorindex],fg=ETTELAP[newcolorindex])
+    obj.title.config(background=PALETTE[newcolorindex],
+                     fg=ettelap(PALETTE[newcolorindex], COLORS[DARKMODE]['WHITE'], COLORS[DARKMODE]['BLACK']))
 
 def on_x_click(obj):
     global boxes, LastUp
@@ -478,7 +523,7 @@ class Box(tk.Frame):
         if (title_height < width_height):
             topbar_height = width_height
             self.title.place(relx=.5,rely=0,height=topbar_height,anchor='n')
-        self.title.config(background=background, fg=ETTELAP[colorindex])
+        self.title.config(background=background, fg=ettelap(PALETTE[colorindex], COLORS[DARKMODE]['WHITE'], COLORS[DARKMODE]['BLACK']))
         self.title.insert(0,title)
         self.title.config(takefocus=False)
         my_height = self.winfo_reqheight()-2*int(3*SCALE)
