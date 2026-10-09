@@ -16,6 +16,7 @@ from tkinter import ttk
 import time
 
 sv_ttk_avail = False
+dark_mode=False
 sv_ttk_theme_no = 0
 sv_ttk_themes = ["light","dark"]
 sv_ttk_backgrounds = ["white","black"]
@@ -57,7 +58,6 @@ if detect_fractional_scaling():
 else:
     FRACFACTOR = 1
 
-DARKMODE=False
 COLORS = {
     False: {
         # https://sashamaps.net/docs/resources/20-colors/
@@ -162,7 +162,7 @@ PALETTE_NAMES = ['RED', 'GREEN', 'YELLOW', 'BLUE', 'ORANGE', 'PURPLE',
                  'MAROON', 'MINT', 'OLIVE', 'APRICOT', 'NAVY', 'GREY',
                  'OFFWHITE',
                  'BLACK']
-PALETTE = [COLORS[DARKMODE][name] for name in PALETTE_NAMES]
+PALETTE = [COLORS[dark_mode][name] for name in PALETTE_NAMES]
 SCALELEVEL = 6*FRACFACTOR
 SCALES = [0.40, 0.50, 0.60, 0.70, 0.80, 0.90, 1.00, 1.15, 1.30, 1.45,
           1.60, 1.80, 2.00, 2.25, 2.50, 2.75, 3.00, 3.25, 3.50, 3.75, 4.00]
@@ -317,11 +317,23 @@ def rebuild(root, area, rescale=0):
             LastUp = boxes[LastUpI]
 
 def on_darklight_button_click(root):
-    global sv_ttk_theme_no
+    global sv_ttk_theme_no, dark_mode, PALETTE, boxes
     sv_ttk_theme_no = (sv_ttk_theme_no + 1 ) % len(sv_ttk_themes)
     sv_ttk.set_theme(sv_ttk_themes[sv_ttk_theme_no])
     root.configure(bg=sv_ttk_backgrounds[sv_ttk_theme_no])
-
+    # normalise colours to rgb so both '#ffffff' and 'white' map to the same name
+    name_for_rgb = {root.winfo_rgb(colour): name
+                    for name, colour in COLORS[dark_mode].items()}
+    dark_mode = not dark_mode
+    PALETTE = [COLORS[dark_mode][name] for name in PALETTE_NAMES]
+    for box in boxes:
+        name = name_for_rgb.get(root.winfo_rgb(box["background"]))
+        if name:
+            newcolour = COLORS[dark_mode][name]
+            box["background"] = newcolour
+            box.title.config(background=newcolour,
+                             fg=ettelap(newcolour, COLORS[dark_mode]['WHITE'], COLORS[dark_mode]['BLACK']))
+    
 def on_help_button_click(obj):
     helpmessage = """vo is a visual organizer of notes in boxes, that are saved as yaml files.
     
@@ -355,7 +367,7 @@ def on_save_button_click(obj):
     LastSavedState = contents
     answer = showinfo(message="Boxes have been saved to "+filename)
 
-def on_add_button_click(area,obj):
+def on_new_box_button_click(area,obj):
     global boxes, LastUp
     locx = int(100*SCALE)
     locy = int(100*SCALE)
@@ -396,17 +408,37 @@ def on_mouse_motion(obj, event):
             Y = Y + event.y - MoveStartY
             obj.place(x=X, y=Y)
 
+def flash_colour_name(obj, event, name, colour):
+    # show a borderless label near the pointer for one second, then destroy it
+    popup = tk.Toplevel(obj)
+    popup.overrideredirect(True)
+    popup.attributes("-topmost", True)
+    Label(popup, text=name,
+          background=colour,
+          fg=ettelap(colour, COLORS[dark_mode]['WHITE'], COLORS[dark_mode]['BLACK']),
+          font=fnt.Font(family=FONTFAMILY, size=int(FONTPOINTS*SCALE), weight="bold"),
+          padx=int(4*SCALE), pady=int(1*SCALE)).pack()
+    popup.geometry("+%d+%d" % (obj.winfo_rootx() + event.x + int(12*SCALE),
+                               obj.winfo_rooty() + event.y + int(12*SCALE)))
+    popup.after(1000, popup.destroy)
+
 def on_right_mouse_down(obj, event):
-    # find object color
-    colornamenow = obj["background"]
+    # find object color (compare as rgb so 'white' matches '#ffffff')
     colorindexnow = -1
-    for i,c in enumerate(PALETTE):
-        if c == colornamenow:
-            colorindexnow = i
+    colornamenow_rgb = obj.winfo_rgb(obj["background"])
+    if colornamenow_rgb == obj.winfo_rgb("#ffffff"):
+        # default boxes start out 'white', which isn't a swatch; treat it as OFFWHITE
+        colorindexnow = PALETTE_NAMES.index('OFFWHITE')
+    else:
+        for i,c in enumerate(PALETTE):
+            if obj.winfo_rgb(c) == colornamenow_rgb:
+                colorindexnow = i
+                break
     newcolorindex =(colorindexnow+1)%len(PALETTE)
     obj["background"] = PALETTE[newcolorindex]
     obj.title.config(background=PALETTE[newcolorindex],
-                     fg=ettelap(PALETTE[newcolorindex], COLORS[DARKMODE]['WHITE'], COLORS[DARKMODE]['BLACK']))
+                     fg=ettelap(PALETTE[newcolorindex], COLORS[dark_mode]['WHITE'], COLORS[dark_mode]['BLACK']))
+    flash_colour_name(obj, event, PALETTE_NAMES[newcolorindex], PALETTE[newcolorindex])
 
 def on_x_click(obj):
     global boxes, LastUp
@@ -470,6 +502,8 @@ def on_alt_arrow_key(area, dx, dy, event):
 class Box(tk.Frame):
     def __init__(self,parent,title,xloc,yloc,background,text="",width=200,height=200):
         global area
+        # canonicalise named colours (e.g. 'white') to '#rrggbb' so ettelap can parse them
+        background = "#%02x%02x%02x" % tuple(v >> 8 for v in parent.winfo_rgb(background))
         tk.Frame.__init__(self, parent, width=int(width*SCALE), height=int(height*SCALE),
                           bg=background,
                           highlightbackground='white',
@@ -523,7 +557,7 @@ class Box(tk.Frame):
         if (title_height < width_height):
             topbar_height = width_height
             self.title.place(relx=.5,rely=0,height=topbar_height,anchor='n')
-        self.title.config(background=background, fg=ettelap(PALETTE[colorindex], COLORS[DARKMODE]['WHITE'], COLORS[DARKMODE]['BLACK']))
+        self.title.config(background=background, fg=ettelap(background, COLORS[dark_mode]['WHITE'], COLORS[dark_mode]['BLACK']))
         self.title.insert(0,title)
         self.title.config(takefocus=False)
         my_height = self.winfo_reqheight()-2*int(3*SCALE)
@@ -655,7 +689,7 @@ def main():
     root.bind("<Control-Down>", partial(on_ctrl_arrow_key,root,0,-15))
     root.bind("<Control-s>", on_save_button_click)
     root.bind("<Control-h>", on_help_button_click)
-    root.bind("<Control-n>", partial(on_add_button_click,root))
+    root.bind("<Control-n>", partial(on_new_box_button_click,root))
     root.bind("<Control-equal>",lambda event: rebuild(root,area,+1))
     root.bind("<Control-minus>",lambda event: rebuild(root,area,-1))
     root.bind("<Control-0>",lambda event: rebuild(root,area,6*FRACFACTOR-SCALELEVEL))
@@ -682,12 +716,12 @@ def main():
                             #                size = int(FONTPOINTS*SCALE)),
                             underline=0,
                             command=partial(on_save_button_click,area))
-    add_button = ttk.Button(buttons,
+    new_box_button = ttk.Button(buttons,
                            text="New Box",
                            #font = fnt.Font(family=FONTFAMILY,
                            #                size = int(FONTPOINTS*SCALE)),
                            underline=0,
-                           command=partial(on_add_button_click,area,None))
+                           command=partial(on_new_box_button_click,area,None))
     zoom_in_button = ttk.Button(buttons,
                            text="-",
                            #font = fnt.Font(family=FONTFAMILY,
@@ -716,14 +750,14 @@ def main():
         darklight_button.config(takefocus=False)
     help_button.pack(side=tk.LEFT)
     save_button.pack(side=tk.LEFT)
-    add_button.pack(side=tk.LEFT)
+    new_box_button.pack(side=tk.LEFT)
     zoom_in_button.pack(side=tk.LEFT)
     zoom_out_button.pack(side=tk.LEFT)
     find_entry.config(takefocus=False)
     result_text.config(takefocus=False)
     help_button.config(takefocus=False)
     save_button.config(takefocus=False)
-    add_button.config(takefocus=False)
+    new_box_button.config(takefocus=False)
     zoom_in_button.config(takefocus=False)
     zoom_out_button.config(takefocus=False)
     find_button.pack(side=tk.LEFT)
